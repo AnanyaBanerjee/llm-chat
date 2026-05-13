@@ -183,35 +183,35 @@ export default function App() {
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-screen-2xl mx-auto px-6 h-13 flex items-center justify-between" style={{ height: '52px' }}>
 
-          {/* Logo + name */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-              <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
-                <circle cx="4" cy="8" r="2.2" fill="currentColor" opacity="0.65"/>
-                <circle cx="12" cy="4" r="2.2" fill="currentColor" opacity="0.85"/>
-                <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
-                <path d="M6 7.5L10 5M6 8.5L10 11" stroke="currentColor" strokeWidth="1.1" opacity="0.45" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span className="text-sm font-bold text-slate-900 tracking-tight">Model Syndicate</span>
-            <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100 select-none">
-              Beta
-            </span>
-          </div>
-
-          {/* Right side: WS status + mode tabs */}
+          {/* Left side: logo + mode tabs */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className={[
-                'w-1.5 h-1.5 rounded-full',
-                wsStatus === 'connected'  ? 'bg-emerald-500' :
-                wsStatus === 'connecting' ? 'bg-amber-400 animate-pulse' :
-                wsStatus === 'error'      ? 'bg-red-500' : 'bg-slate-300',
-              ].join(' ')} />
-              <span className="text-xs text-slate-400 capitalize hidden sm:inline">{wsStatus}</span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
+                  <circle cx="4" cy="8" r="2.2" fill="currentColor" opacity="0.65"/>
+                  <circle cx="12" cy="4" r="2.2" fill="currentColor" opacity="0.85"/>
+                  <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+                  <path d="M6 7.5L10 5M6 8.5L10 11" stroke="currentColor" strokeWidth="1.1" opacity="0.45" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <span className="text-sm font-bold text-slate-900 tracking-tight">Model Syndicate</span>
+              <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100 select-none">
+                Beta
+              </span>
             </div>
             <div className="w-px h-4 bg-slate-200" />
             <ModeSelector mode={mode} onChange={setMode} disabled={busy} />
+          </div>
+
+          {/* Right side: WS status */}
+          <div className="flex items-center gap-1.5">
+            <span className={[
+              'w-1.5 h-1.5 rounded-full',
+              wsStatus === 'connected'  ? 'bg-emerald-500' :
+              wsStatus === 'connecting' ? 'bg-amber-400 animate-pulse' :
+              wsStatus === 'error'      ? 'bg-red-500' : 'bg-slate-300',
+            ].join(' ')} />
+            <span className="text-xs text-slate-400 capitalize hidden sm:inline">{wsStatus}</span>
           </div>
         </div>
       </header>
