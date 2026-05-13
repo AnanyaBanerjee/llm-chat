@@ -47,9 +47,12 @@ class LLMDialogue:
         self.openai_history.append({"role": "assistant", "content": reply})
         return reply
 
-    def run(self, seed: str, turns: int = 4) -> list[dict]:
+    def run(self, seed: str, turns: int = 4, stop_fn=None) -> list[dict]:
         """
         Run a dialogue. Claude speaks first, OpenAI responds, repeat for `turns` rounds.
+
+        stop_fn: optional callable(reply: str) -> bool. If it returns True after any
+                 reply, the loop ends early. Useful for consensus detection.
 
         Returns the full transcript as a list of dicts:
             [{"speaker": "Claude" | "OpenAI", "turn": int, "text": str}, ...]
@@ -66,10 +69,18 @@ class LLMDialogue:
             transcript.append({"speaker": "Claude", "turn": i + 1, "text": claude_reply})
             print(f"[Claude #{i + 1}]\n{claude_reply}\n{divider}")
 
+            if stop_fn and stop_fn(claude_reply):
+                print("[Stopped early: consensus reached after Claude's reply]")
+                break
+
             # OpenAI's turn
             openai_reply = self._ask_openai(claude_reply)
             transcript.append({"speaker": "OpenAI", "turn": i + 1, "text": openai_reply})
             print(f"[OpenAI #{i + 1}]\n{openai_reply}\n{divider}")
+
+            if stop_fn and stop_fn(openai_reply):
+                print("[Stopped early: consensus reached after OpenAI's reply]")
+                break
 
             current = openai_reply
 

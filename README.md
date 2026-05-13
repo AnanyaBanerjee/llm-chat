@@ -25,6 +25,40 @@ export OPENAI_API_KEY=your_openai_key_here
 
 Or copy `.env.example` to `.env` and fill in the values (use a tool like [`python-dotenv`](https://pypi.org/project/python-dotenv/) to load it).
 
+For DeepSeek and Grok (optional — only needed for the Model Council UI):
+
+```bash
+export DEEPSEEK_API_KEY=your_deepseek_key_here
+export GROK_API_KEY=your_grok_key_here
+```
+
+## Model Council UI
+
+A local web UI that fans out any question to multiple LLMs simultaneously and lets them compare notes.
+
+**1. Start the backend** (from the repo root)
+
+```bash
+pip install fastapi uvicorn   # first time only
+python -m uvicorn council.server:app --host 127.0.0.1 --port 8765 --reload
+```
+
+**2. Start the frontend** (in a second terminal)
+
+```bash
+cd frontend
+npm install   # first time only
+npm run dev
+```
+
+**3. Open your browser at `http://localhost:5173`**
+
+From there you can toggle which models to include, type a task, and hit **Ask Council**. All selected models stream their responses side-by-side. Once they've all answered, **Compare Notes** sends each model the full set of responses and asks it to react — streamed into a second section under each card.
+
+Models with missing API keys will show an error card without affecting the others.
+
+---
+
 ## Usage
 
 **Run a built-in example**
