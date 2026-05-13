@@ -15,7 +15,7 @@ export default function ModelSelector({ models, selected, onChange, disabled }: 
   const toggle = (id: string) => {
     if (disabled) return
     if (selected.includes(id)) {
-      if (selected.length === 1) return // keep at least one
+      if (selected.length === 1) return
       onChange(selected.filter(s => s !== id))
     } else {
       onChange([...selected, id])
@@ -24,7 +24,9 @@ export default function ModelSelector({ models, selected, onChange, disabled }: 
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-slate-500 uppercase tracking-wider mr-1">Council</span>
+      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider mr-1 select-none">
+        Council
+      </span>
       {models.map(m => {
         const active = selected.includes(m.id)
         return (
@@ -32,16 +34,21 @@ export default function ModelSelector({ models, selected, onChange, disabled }: 
             key={m.id}
             onClick={() => toggle(m.id)}
             disabled={disabled}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border disabled:cursor-not-allowed"
+            title={active ? `Remove ${m.label}` : `Add ${m.label}`}
+            className={[
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+              'transition-all duration-150 cursor-pointer select-none',
+              'border disabled:cursor-not-allowed disabled:opacity-60',
+            ].join(' ')}
             style={
               active
-                ? { backgroundColor: m.color + '20', borderColor: m.color + '60', color: m.color }
-                : { backgroundColor: 'transparent', borderColor: '#334155', color: '#64748b' }
+                ? { backgroundColor: m.color + '12', borderColor: m.color + '50', color: m.color }
+                : { backgroundColor: 'transparent', borderColor: '#E2E8F0', color: '#94A3B8' }
             }
           >
             <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: active ? m.color : '#334155' }}
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors"
+              style={{ backgroundColor: active ? m.color : '#CBD5E1' }}
             />
             {m.label}
           </button>

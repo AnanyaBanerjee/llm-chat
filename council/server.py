@@ -1,5 +1,8 @@
 from __future__ import annotations
 import asyncio
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from .models import MODEL_REGISTRY
@@ -28,67 +31,120 @@ async def council_ws(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
 
-            if data["type"] == "ask":
+            # ── Compare: all models answer simultaneously ─────────────────
+            if data["type"] == "compare":
                 task: str = data["task"]
                 model_ids: list[str] = data.get("models", list(MODEL_REGISTRY.keys()))
-                system: str = data.get("system", "You are a helpful assistant. Be concise.")
 
-                async def stream_one(mid: str):
+                async def stream_compare(mid: str):
                     try:
                         adapter = MODEL_REGISTRY[mid]()
                         async for chunk in adapter.stream(
                             messages=[{"role": "user", "content": task}],
-                            system=system,
+                            system="You are a helpful assistant. Be concise.",
                         ):
                             await websocket.send_json({"type": "chunk", "model": mid, "text": chunk})
                         await websocket.send_json({"type": "done", "model": mid})
                     except Exception as e:
                         await websocket.send_json({"type": "error", "model": mid, "error": str(e)})
 
-                await asyncio.gather(*[stream_one(mid) for mid in model_ids if mid in MODEL_REGISTRY])
+                await asyncio.gather(*[
+                    stream_compare(mid) for mid in model_ids if mid in MODEL_REGISTRY
+                ])
 
-            elif data["type"] == "compare":
-                task: str = data.get("task", "")
-                responses: dict[str, str] = data["responses"]
-                model_ids: list[str] = data.get("models", list(responses.keys()))
+            # ── Debate: round-robin, each model sees the full thread ──────
+            elif data["type"] == "debate":
+                topic: str = data["topic"]
+                model_ids: list[str] = data["models"]
+                max_turns: int = min(int(data.get("max_turns", 6)), 20)
 
-                others_summary = "\n\n".join(
-                    f"**{MODEL_REGISTRY[mid].label}**: {text}"
-                    for mid, text in responses.items()
-                    if mid in MODEL_REGISTRY
-                )
-                compare_prompt = (
-                    f"You and other AI models all answered the same question:\n\n"
-                    f"> {task}\n\n"
-                    f"Here are all responses:\n\n{others_summary}\n\n"
-                    "Where do you agree with the others? Where do you disagree, and why? "
-                    "What's missing from the collective answer? Be direct, 3-5 sentences."
-                )
+                # Shared log of (model_id, full_text) visible to all models
+                debate_log: list[tuple[str, str]] = []
 
-                async def stream_compare(mid: str):
-                    my_response = responses.get(mid, "")
+                for turn_idx in range(max_turns):
+                    mid = model_ids[turn_idx % len(model_ids)]
+
+                    if not debate_log:
+                        user_msg = (
+                            f"The debate topic is: {topic}\n\n"
+                            "Make your opening argument. Be direct and concise — 3-4 sentences."
+                        )
+                    else:
+                        history = "\n\n".join(
+                            f"[{MODEL_REGISTRY[prev_mid].label}]: {text}"
+                            for prev_mid, text in debate_log
+                        )
+                        user_msg = (
+                            f"Debate topic: {topic}\n\n"
+                            f"Debate so far:\n{history}\n\n"
+                            "Your turn. Respond directly to the previous point. "
+                            "Be concise — 3-4 sentences. Advance the debate, don't repeat what's been said."
+                        )
+
                     system = (
-                        f"You are {MODEL_REGISTRY[mid].label}. "
-                        "You are comparing notes with other AI models in a council."
+                        f"You are {MODEL_REGISTRY[mid].label}, participating in a debate. "
+                        "Take a clear position, be direct, and push back when you disagree. "
+                        "Do not introduce yourself — just argue."
                     )
+
+                    await websocket.send_json({
+                        "type": "debate_turn_start",
+                        "model": mid,
+                        "turn": turn_idx + 1,
+                    })
+
                     try:
                         adapter = MODEL_REGISTRY[mid]()
-                        msgs = (
-                            [
-                                {"role": "user", "content": task},
-                                {"role": "assistant", "content": my_response},
-                                {"role": "user", "content": compare_prompt},
-                            ]
-                            if task
-                            else [{"role": "user", "content": compare_prompt}]
-                        )
-                        async for chunk in adapter.stream(messages=msgs, system=system):
-                            await websocket.send_json({"type": "compare_chunk", "model": mid, "text": chunk})
-                        await websocket.send_json({"type": "compare_done", "model": mid})
+                        full_text = ""
+                        async for chunk in adapter.stream(
+                            messages=[{"role": "user", "content": user_msg}],
+                            system=system,
+                        ):
+                            full_text += chunk
+                            await websocket.send_json({
+                                "type": "debate_chunk",
+                                "model": mid,
+                                "turn": turn_idx + 1,
+                                "text": chunk,
+                            })
+                        debate_log.append((mid, full_text))
+                        await websocket.send_json({
+                            "type": "debate_turn_done",
+                            "model": mid,
+                            "turn": turn_idx + 1,
+                        })
+                    except Exception as e:
+                        await websocket.send_json({"type": "error", "model": mid, "error": str(e)})
+                        break
+
+                await websocket.send_json({"type": "debate_done"})
+
+            # ── PR Review: all models review the diff simultaneously ──────
+            elif data["type"] == "pr_review":
+                diff: str = data["diff"]
+                model_ids: list[str] = data.get("models", list(MODEL_REGISTRY.keys()))
+
+                review_prompt = (
+                    "You are a senior software engineer doing a code review. "
+                    "Review the following PR diff. Identify security issues, bugs, and suggested improvements. "
+                    "Be specific. Use bullet points.\n\n"
+                    f"```diff\n{diff}\n```"
+                )
+
+                async def stream_review(mid: str):
+                    try:
+                        adapter = MODEL_REGISTRY[mid]()
+                        async for chunk in adapter.stream(
+                            messages=[{"role": "user", "content": review_prompt}],
+                        ):
+                            await websocket.send_json({"type": "chunk", "model": mid, "text": chunk})
+                        await websocket.send_json({"type": "done", "model": mid})
                     except Exception as e:
                         await websocket.send_json({"type": "error", "model": mid, "error": str(e)})
 
-                await asyncio.gather(*[stream_compare(mid) for mid in model_ids if mid in MODEL_REGISTRY])
+                await asyncio.gather(*[
+                    stream_review(mid) for mid in model_ids if mid in MODEL_REGISTRY
+                ])
 
     except WebSocketDisconnect:
         pass
