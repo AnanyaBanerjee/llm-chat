@@ -149,14 +149,14 @@ export default function App() {
     setCompareCards(fresh)
     setComparePhase('running')
     send({ type: 'compare', task, models: selected, verbosity })
-  }, [selected]) // eslint-disable-line
+  }, [selected, verbosity]) // eslint-disable-line
 
   const submitDebate = useCallback((topic: string) => {
     activeModeRef.current = 'debate'
     setDebateMsgs([])
     setDebatePhase('running')
     send({ type: 'debate', topic, models: selected, max_turns: maxTurns, verbosity })
-  }, [selected, maxTurns]) // eslint-disable-line
+  }, [selected, maxTurns, verbosity]) // eslint-disable-line
 
   const submitPR = useCallback(() => {
     if (!prDiff.trim()) return
@@ -166,7 +166,7 @@ export default function App() {
     setPrCards(fresh)
     setPrPhase('running')
     send({ type: 'pr_review', diff: prDiff, models: selected, verbosity })
-  }, [selected, prDiff]) // eslint-disable-line
+  }, [selected, prDiff, verbosity]) // eslint-disable-line
 
   const busy  = comparePhase === 'running' || debatePhase === 'running' || prPhase === 'running'
   const cols  = Math.min(selected.length, 4)
@@ -180,61 +180,62 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 bg-white border-b border-slate-200">
-        <div className="max-w-screen-2xl mx-auto px-8 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Logo mark */}
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200/80">
+        <div className="max-w-screen-2xl mx-auto px-6 h-13 flex items-center justify-between" style={{ height: '52px' }}>
+
+          {/* Logo + name */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
               <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
-                <circle cx="4" cy="8" r="2.5" fill="currentColor" opacity="0.6"/>
-                <circle cx="12" cy="4" r="2.5" fill="currentColor" opacity="0.8"/>
-                <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
-                <path d="M6 7.5L10 5M6 8.5L10 11" stroke="currentColor" strokeWidth="1" opacity="0.4"/>
+                <circle cx="4" cy="8" r="2.2" fill="currentColor" opacity="0.65"/>
+                <circle cx="12" cy="4" r="2.2" fill="currentColor" opacity="0.85"/>
+                <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+                <path d="M6 7.5L10 5M6 8.5L10 11" stroke="currentColor" strokeWidth="1.1" opacity="0.45" strokeLinecap="round"/>
               </svg>
             </div>
-            <div>
-              <span className="text-sm font-semibold text-slate-900">Model Syndicate</span>
-            </div>
+            <span className="text-sm font-bold text-slate-900 tracking-tight">Model Syndicate</span>
+            <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100 select-none">
+              Beta
+            </span>
           </div>
 
-          {/* WS status */}
-          <div className="flex items-center gap-2">
-            <span
-              className={[
+          {/* Right side: WS status + mode tabs */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className={[
                 'w-1.5 h-1.5 rounded-full',
-                wsStatus === 'connected'    ? 'bg-emerald-500' :
-                wsStatus === 'connecting'   ? 'bg-amber-400 animate-pulse' :
-                wsStatus === 'error'        ? 'bg-red-500' :
-                                              'bg-slate-300',
-              ].join(' ')}
-            />
-            <span className="text-xs text-slate-400 capitalize">{wsStatus}</span>
+                wsStatus === 'connected'  ? 'bg-emerald-500' :
+                wsStatus === 'connecting' ? 'bg-amber-400 animate-pulse' :
+                wsStatus === 'error'      ? 'bg-red-500' : 'bg-slate-300',
+              ].join(' ')} />
+              <span className="text-xs text-slate-400 capitalize hidden sm:inline">{wsStatus}</span>
+            </div>
+            <div className="w-px h-4 bg-slate-200" />
+            <ModeSelector mode={mode} onChange={setMode} disabled={busy} />
           </div>
         </div>
       </header>
 
-      {/* ── Controls bar ────────────────────────────────────────────────── */}
-      <div className="sticky top-14 z-10 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-screen-2xl mx-auto px-8 py-3 flex items-center gap-6 flex-wrap">
-          <ModeSelector mode={mode} onChange={setMode} disabled={busy} />
-          <div className="w-px h-5 bg-slate-200" />
+      {/* ── Sub-controls bar ────────────────────────────────────────────── */}
+      <div className="sticky top-[52px] z-10 bg-white/95 backdrop-blur-sm border-b border-slate-200/80">
+        <div className="max-w-screen-2xl mx-auto px-6 py-2.5 flex items-center gap-3 flex-wrap">
           <ModelSelector models={MODELS} selected={selected} onChange={setSelected} disabled={busy} />
-          <div className="w-px h-5 bg-slate-200" />
-          {/* Verbosity picker */}
+          <div className="w-px h-4 bg-slate-200 mx-1" />
+          {/* Verbosity */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-slate-400 uppercase tracking-wider select-none">Length</span>
-            <div className="flex gap-0.5">
+            <div className="flex gap-0.5 bg-slate-100 p-0.5 rounded-lg">
               {([['short', 'Short'], ['medium', 'Medium'], ['none', 'No limit']] as const).map(([val, label]) => (
                 <button
                   key={val}
                   onClick={() => !busy && setVerbosity(val)}
                   disabled={busy}
                   className={[
-                    'px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
+                    'px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer select-none',
                     'disabled:cursor-not-allowed disabled:opacity-60',
                     verbosity === val
-                      ? 'bg-slate-800 text-white'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100',
+                      ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200/80'
+                      : 'text-slate-500 hover:text-slate-700',
                   ].join(' ')}
                 >
                   {label}

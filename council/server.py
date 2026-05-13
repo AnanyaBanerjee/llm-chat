@@ -33,8 +33,13 @@ async def council_ws(websocket: WebSocket):
 
             # ── Verbosity directive (shared across all modes) ─────────────
             VERBOSITY_DIRECTIVE: dict[str, str] = {
-                "short":  "Be very brief — 2 lines maximum.",
-                "medium": "Be moderately concise — 5 lines maximum.",
+                "short":  "IMPORTANT: Reply in 2 sentences or fewer. No lists, no headers, no elaboration.",
+                "medium": "Keep your reply to 4-5 sentences. Be direct and skip unnecessary preamble.",
+            }
+            VERBOSITY_MAX_TOKENS: dict[str, int] = {
+                "short":  120,
+                "medium": 350,
+                "none":   1024,
             }
 
             def verbosity_suffix(v: str) -> str:
@@ -42,6 +47,7 @@ async def council_ws(websocket: WebSocket):
                 return f" {directive}" if directive else ""
 
             verbosity: str = data.get("verbosity", "none")
+            max_tokens: int = VERBOSITY_MAX_TOKENS.get(verbosity, 1024)
 
             # ── Compare: all models answer simultaneously ─────────────────
             if data["type"] == "compare":
@@ -51,7 +57,7 @@ async def council_ws(websocket: WebSocket):
 
                 async def stream_compare(mid: str):
                     try:
-                        adapter = MODEL_REGISTRY[mid]()
+                        adapter = MODEL_REGISTRY[mid](max_tokens=max_tokens)
                         async for chunk in adapter.stream(
                             messages=[{"role": "user", "content": task}],
                             system=system,
@@ -108,7 +114,7 @@ async def council_ws(websocket: WebSocket):
                     })
 
                     try:
-                        adapter = MODEL_REGISTRY[mid]()
+                        adapter = MODEL_REGISTRY[mid](max_tokens=max_tokens)
                         full_text = ""
                         async for chunk in adapter.stream(
                             messages=[{"role": "user", "content": user_msg}],
@@ -148,7 +154,7 @@ async def council_ws(websocket: WebSocket):
 
                 async def stream_review(mid: str):
                     try:
-                        adapter = MODEL_REGISTRY[mid]()
+                        adapter = MODEL_REGISTRY[mid](max_tokens=max_tokens)
                         async for chunk in adapter.stream(
                             messages=[{"role": "user", "content": review_prompt}],
                         ):

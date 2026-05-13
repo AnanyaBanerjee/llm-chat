@@ -25,7 +25,7 @@ export default function ModelSelector({ models, selected, onChange, disabled }: 
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-xs font-medium text-slate-400 uppercase tracking-wider mr-1 select-none">
-        Council
+        Models
       </span>
       {models.map(m => {
         const active = selected.includes(m.id)
