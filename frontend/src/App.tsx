@@ -21,7 +21,8 @@ const BACKEND = 'ws://127.0.0.1:8765/ws/council'
 export default function App() {
   const [mode, setMode]         = useState<Mode>('compare')
   const [selected, setSelected] = useState<string[]>(MODELS.map(m => m.id))
-  const [wsStatus, setWsStatus] = useState<WsStatus>('disconnected')
+  const [wsStatus, setWsStatus]       = useState<WsStatus>('disconnected')
+  const [verbosity, setVerbosity]     = useState<'short' | 'medium' | 'none'>('none')
 
   const [compareCards, setCompareCards] = useState<Record<string, CardState>>({})
   const [comparePhase, setComparePhase] = useState<Phase>('idle')
@@ -147,14 +148,14 @@ export default function App() {
     selected.forEach(id => { fresh[id] = { text: '', status: 'streaming' } })
     setCompareCards(fresh)
     setComparePhase('running')
-    send({ type: 'compare', task, models: selected })
+    send({ type: 'compare', task, models: selected, verbosity })
   }, [selected]) // eslint-disable-line
 
   const submitDebate = useCallback((topic: string) => {
     activeModeRef.current = 'debate'
     setDebateMsgs([])
     setDebatePhase('running')
-    send({ type: 'debate', topic, models: selected, max_turns: maxTurns })
+    send({ type: 'debate', topic, models: selected, max_turns: maxTurns, verbosity })
   }, [selected, maxTurns]) // eslint-disable-line
 
   const submitPR = useCallback(() => {
@@ -164,7 +165,7 @@ export default function App() {
     selected.forEach(id => { fresh[id] = { text: '', status: 'streaming' } })
     setPrCards(fresh)
     setPrPhase('running')
-    send({ type: 'pr_review', diff: prDiff, models: selected })
+    send({ type: 'pr_review', diff: prDiff, models: selected, verbosity })
   }, [selected, prDiff]) // eslint-disable-line
 
   const busy  = comparePhase === 'running' || debatePhase === 'running' || prPhase === 'running'
@@ -218,6 +219,29 @@ export default function App() {
           <ModeSelector mode={mode} onChange={setMode} disabled={busy} />
           <div className="w-px h-5 bg-slate-200" />
           <ModelSelector models={MODELS} selected={selected} onChange={setSelected} disabled={busy} />
+          <div className="w-px h-5 bg-slate-200" />
+          {/* Verbosity picker */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider select-none">Length</span>
+            <div className="flex gap-0.5">
+              {([['short', 'Short'], ['medium', 'Medium'], ['none', 'No limit']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => !busy && setVerbosity(val)}
+                  disabled={busy}
+                  className={[
+                    'px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
+                    'disabled:cursor-not-allowed disabled:opacity-60',
+                    verbosity === val
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

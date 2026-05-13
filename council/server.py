@@ -31,17 +31,30 @@ async def council_ws(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
 
+            # ── Verbosity directive (shared across all modes) ─────────────
+            VERBOSITY_DIRECTIVE: dict[str, str] = {
+                "short":  "Be very brief — 2 lines maximum.",
+                "medium": "Be moderately concise — 5 lines maximum.",
+            }
+
+            def verbosity_suffix(v: str) -> str:
+                directive = VERBOSITY_DIRECTIVE.get(v, "")
+                return f" {directive}" if directive else ""
+
+            verbosity: str = data.get("verbosity", "none")
+
             # ── Compare: all models answer simultaneously ─────────────────
             if data["type"] == "compare":
                 task: str = data["task"]
                 model_ids: list[str] = data.get("models", list(MODEL_REGISTRY.keys()))
+                system = "You are a helpful assistant." + verbosity_suffix(verbosity)
 
                 async def stream_compare(mid: str):
                     try:
                         adapter = MODEL_REGISTRY[mid]()
                         async for chunk in adapter.stream(
                             messages=[{"role": "user", "content": task}],
-                            system="You are a helpful assistant. Be concise.",
+                            system=system,
                         ):
                             await websocket.send_json({"type": "chunk", "model": mid, "text": chunk})
                         await websocket.send_json({"type": "done", "model": mid})
@@ -67,7 +80,7 @@ async def council_ws(websocket: WebSocket):
                     if not debate_log:
                         user_msg = (
                             f"The debate topic is: {topic}\n\n"
-                            "Make your opening argument. Be direct and concise — 3-4 sentences."
+                            "Make your opening argument. Be direct and concise."
                         )
                     else:
                         history = "\n\n".join(
@@ -78,13 +91,14 @@ async def council_ws(websocket: WebSocket):
                             f"Debate topic: {topic}\n\n"
                             f"Debate so far:\n{history}\n\n"
                             "Your turn. Respond directly to the previous point. "
-                            "Be concise — 3-4 sentences. Advance the debate, don't repeat what's been said."
+                            "Advance the debate, don't repeat what's been said."
                         )
 
                     system = (
                         f"You are {MODEL_REGISTRY[mid].label}, participating in a debate. "
                         "Take a clear position, be direct, and push back when you disagree. "
                         "Do not introduce yourself — just argue."
+                        + verbosity_suffix(verbosity)
                     )
 
                     await websocket.send_json({
@@ -127,8 +141,9 @@ async def council_ws(websocket: WebSocket):
                 review_prompt = (
                     "You are a senior software engineer doing a code review. "
                     "Review the following PR diff. Identify security issues, bugs, and suggested improvements. "
-                    "Be specific. Use bullet points.\n\n"
-                    f"```diff\n{diff}\n```"
+                    "Be specific. Use bullet points."
+                    + verbosity_suffix(verbosity)
+                    + f"\n\n```diff\n{diff}\n```"
                 )
 
                 async def stream_review(mid: str):
