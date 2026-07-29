@@ -1,5 +1,8 @@
 from __future__ import annotations
+import functools
+import json
 import os
+import urllib.request
 from collections.abc import AsyncIterator
 import anthropic
 import openai
@@ -115,3 +118,28 @@ class GrokAdapter(GPT4oAdapter):
             base_url="https://api.x.ai/v1",
             api_key=api_key,
         )
+
+
+def _list_ollama_models(base_url: str = "http://localhost:11434") -> list[str]:
+    try:
+        with urllib.request.urlopen(f"{base_url}/api/tags", timeout=1) as resp:
+            data = json.load(resp)
+        return [m["name"] for m in data.get("models", [])]
+    except Exception:
+        return []
+
+
+def _register_ollama_models(base_url: str = "http://localhost:11434") -> None:
+    # ponytail: rotates through a fixed palette rather than assigning real per-model colors
+    colors = ["#0EA5E9", "#84CC16", "#F97316", "#A855F7", "#14B8A6", "#EAB308"]
+    for i, name in enumerate(_list_ollama_models(base_url)):
+        factory = functools.partial(
+            GPT4oAdapter, model=name, base_url=f"{base_url}/v1", api_key="ollama",
+        )
+        factory.id = "ollama-" + name.replace(":", "-").replace(".", "-")
+        factory.label = name
+        factory.color = colors[i % len(colors)]
+        MODEL_REGISTRY[factory.id] = factory
+
+
+_register_ollama_models()

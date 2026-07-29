@@ -5,22 +5,18 @@ import ModelCard, { type Status } from './components/ModelCard'
 import TaskInput from './components/TaskInput'
 import DebateThread, { type DebateMsg } from './components/DebateThread'
 
-const MODELS = [
-  { id: 'claude',   label: 'Claude',   color: '#B45309' },
-  { id: 'gpt4o',    label: 'GPT-4o',   color: '#0D9488' },
-  { id: 'deepseek', label: 'DeepSeek', color: '#4F46E5' },
-  { id: 'grok',     label: 'Grok',     color: '#DB2777' },
-]
-
+type ModelInfo = { id: string; label: string; color: string }
 type CardState = { text: string; status: Status; error?: string }
 type Phase = 'idle' | 'running' | 'done'
 type WsStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 const BACKEND = 'ws://127.0.0.1:8765/ws/council'
+const API = 'http://127.0.0.1:8765'
 
 export default function App() {
   const [mode, setMode]         = useState<Mode>('compare')
-  const [selected, setSelected] = useState<string[]>(MODELS.map(m => m.id))
+  const [MODELS, setModels]     = useState<ModelInfo[]>([])
+  const [selected, setSelected] = useState<string[]>([])
   const [wsStatus, setWsStatus]       = useState<WsStatus>('disconnected')
   const [verbosity, setVerbosity]     = useState<'short' | 'medium' | 'none'>('none')
 
@@ -37,6 +33,17 @@ export default function App() {
 
   const wsRef         = useRef<WebSocket | null>(null)
   const activeModeRef = useRef<Mode>('compare')
+
+  // ── Model list (includes any locally-registered Ollama models) ─────────────
+  useEffect(() => {
+    fetch(`${API}/models`)
+      .then(r => r.json())
+      .then((list: ModelInfo[]) => {
+        setModels(list)
+        setSelected(list.map(m => m.id))
+      })
+      .catch(() => setWsStatus('error'))
+  }, [])
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const getWs = useCallback((): WebSocket => {

@@ -92,6 +92,12 @@ GROK_API_KEY=your_key_here       # optional
 
 Models with missing keys show an error card — the others still work.
 
+### Local models (Ollama)
+
+If Ollama is running at `localhost:11434`, every model you have pulled
+(`ollama list`) is auto-registered as a selectable model on backend startup —
+no config needed. Restart the backend after pulling a new model to pick it up.
+
 ### 4. Start the backend
 
 ```bash
