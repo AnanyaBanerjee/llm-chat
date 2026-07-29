@@ -77,6 +77,9 @@ async def council_ws(websocket: WebSocket):
                 model_ids: list[str] = data["models"]
                 max_turns: int = min(int(data.get("max_turns", 6)), 20)
 
+                # One adapter per model, reused across all its turns
+                adapters = {mid: MODEL_REGISTRY[mid](max_tokens=max_tokens) for mid in model_ids}
+
                 # Shared log of (model_id, full_text) visible to all models
                 debate_log: list[tuple[str, str]] = []
 
@@ -114,7 +117,7 @@ async def council_ws(websocket: WebSocket):
                     })
 
                     try:
-                        adapter = MODEL_REGISTRY[mid](max_tokens=max_tokens)
+                        adapter = adapters[mid]
                         full_text = ""
                         async for chunk in adapter.stream(
                             messages=[{"role": "user", "content": user_msg}],

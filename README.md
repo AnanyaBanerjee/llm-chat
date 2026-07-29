@@ -95,7 +95,7 @@ Models with missing keys show an error card — the others still work.
 ### 4. Start the backend
 
 ```bash
-python -m uvicorn council.server:app --host 127.0.0.1 --port 8765 --reload
+python -m uvicorn council.server:app --host 127.0.0.1 --port 8765 --reload --reload-dir council
 ```
 
 ### 5. Start the frontend
@@ -109,7 +109,7 @@ npm run dev
 ### 6. Open in your browser
 
 ```
-http://localhost:5173
+http://localhost:5183
 ```
 
 ---
